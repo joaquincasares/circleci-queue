@@ -58,6 +58,10 @@ parameters:
   include-debug:
     type: boolean
     default: false
+  project-reponame:
+    type: string
+    default: ""
+    description: "Defaults to the current project's reponame."
 
 
 steps:
@@ -79,8 +83,9 @@ steps:
         echo "export ONLY_ON_BRANCH=<<parameters.limit-branch-name>>" >> $BASH_ENV
         echo "export ONLY_ON_WORKFLOW=<<parameters.limit-workflow-name>>" >> $BASH_ENV
         echo "export TAG_PATTERN=\"<<parameters.tag-pattern>>\"" >> $BASH_ENV
+        echo "export PROJECT_REPONAME=\"<<parameters.project-reponame>>\"" >> $BASH_ENV
 
   - run:
       name: Queue Until Front of Line
-      command: <<include(../scripts/loop.bash)>>
+      command: \<<include(../scripts/loop.bash)>>
       shell: bash

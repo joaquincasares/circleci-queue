@@ -1,3 +1,34 @@
+This is a fork of eddiewebb's circleci-queue repo. It adds:
+
+* Support for string-based `my-pipeline` values
+* These instructions
+
+## Publishing Guide
+
+First time setup:
+
+```bash
+circleci orb create weavegrid/queue --private
+```
+
+Releasing new versions:
+
+```bash
+./bin/deploy.sh
+
+# test against weavegrid/queue@dev:first
+
+# publish with a new, immutable patch version
+circleci orb publish promote weavegrid/queue@dev:first patch
+```
+
+> Note: Once an orb is created it cannot be deleted. Orbs are semver compliant, and each published version is immutable. Publicly released orbs are potential dependencies for other projects.
+
+Due to the above message, and how CircleCI, handles versioning, our `weavegrid/queue` versioning will be different than eddiewebb's.
+Refer to src/@orb.yml for updated information.
+
+===
+
 # CircleCI Concurrency Control Orb
 
 [![CircleCI](https://img.shields.io/circleci/build/gh/eddiewebb/circleci-queue)](https://circleci.com/gh/eddiewebb/circleci-queue/tree/master) 

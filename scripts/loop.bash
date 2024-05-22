@@ -4,6 +4,8 @@
 # THis script uses many environment variables, some set from pipeline parameters. See orb yaml for source.
 #
 
+set -x
+
 load_variables(){
 
     TMP_DIR=`mktemp -d`
@@ -17,7 +19,7 @@ load_variables(){
     # just confirm our required variables are present
     : ${CIRCLE_BUILD_NUM:?"Required Env Variable not found!"}
     : ${CIRCLE_PROJECT_USERNAME:?"Required Env Variable not found!"}
-    : ${CIRCLE_PROJECT_REPONAME:?"Required Env Variable not found!"}
+    : ${PROJECT_REPONAME:=${CIRCLE_PROJECT_REPONAME}}
     : ${CIRCLE_REPOSITORY_URL:?"Required Env Variable not found!"}
     : ${CIRCLE_JOB:?"Required Env Variable not found!"}
     VCS_TYPE="github"
@@ -84,19 +86,19 @@ update_active_run_data(){
         echo "Orb parameter block-workflow is true. Any previous (matching) pipelines with running workflows will block this entire workflow."
         if [ "${ONLY_ON_WORKFLOW}" = "*" ]; then
             echo "No workflow name filter. This job will block until no previous workflows with *any* name are running, regardless of job name."
-            oldest_running_build_num=`jq 'sort_by(.workflows.pipeline_number)| .[0].build_num' $AUGMENTED_JOBSTATUS_PATH`
-            front_of_queue_pipeline_number=`jq -r 'sort_by(.workflows.pipeline_number)| .[0].workflows.pipeline_number // empty' $AUGMENTED_JOBSTATUS_PATH`
+            oldest_running_build_num=`jq 'sort_by(.build_num)| .[0].build_num' $AUGMENTED_JOBSTATUS_PATH`
+            front_of_queue_pipeline_number=`jq -r 'sort_by(.build_num)| .[0].build_num // empty' $AUGMENTED_JOBSTATUS_PATH`
         else
             echo "Orb parameter limit-workflow-name is provided."
             echo "This job will block until no previous occurrences of workflow ${ONLY_ON_WORKFLOW} are running, regardless of job name"
-            oldest_running_build_num=`jq ". | map(select(.workflows.workflow_name| test(\"${ONLY_ON_WORKFLOW}\";\"sx\"))) | sort_by(.workflows.pipeline_number)| .[0].build_num" $AUGMENTED_JOBSTATUS_PATH`
-            front_of_queue_pipeline_number=`jq -r ". | map(select(.workflows.workflow_name| test(\"${ONLY_ON_WORKFLOW}\";\"sx\"))) | sort_by(.workflows.pipeline_number)| .[0].workflows.pipeline_number // empty" $AUGMENTED_JOBSTATUS_PATH`
+            oldest_running_build_num=`jq ". | map(select(.workflows.workflow_name| test(\"${ONLY_ON_WORKFLOW}\";\"sx\"))) | sort_by(.build_num)| .[0].build_num" $AUGMENTED_JOBSTATUS_PATH`
+            front_of_queue_pipeline_number=`jq -r ". | map(select(.workflows.workflow_name| test(\"${ONLY_ON_WORKFLOW}\";\"sx\"))) | sort_by(.build_num)| .[0].build_num // empty" $AUGMENTED_JOBSTATUS_PATH`
         fi
     else
         echo "Orb parameter block-workflow is false. Use Job level queueing."
         echo "Only blocking execution if running previous jobs matching this job: ${JOB_NAME}"
-        oldest_running_build_num=`jq ". | map(select(.workflows.job_name | test(\"${JOB_NAME}\";\"sx\"))) | sort_by(.workflows.pipeline_number)|  .[0].build_num" $AUGMENTED_JOBSTATUS_PATH`
-        front_of_queue_pipeline_number=`jq -r ". | map(select(.workflows.job_name | test(\"${JOB_NAME}\";\"sx\"))) | sort_by(.workflows.pipeline_number)|  .[0].workflows.pipeline_number // empty" $AUGMENTED_JOBSTATUS_PATH`
+        oldest_running_build_num=`jq ". | map(select(.workflows.job_name | test(\"${JOB_NAME}\";\"sx\"))) | sort_by(.build_num)|  .[0].build_num" $AUGMENTED_JOBSTATUS_PATH`
+        front_of_queue_pipeline_number=`jq -r ". | map(select(.workflows.job_name | test(\"${JOB_NAME}\";\"sx\"))) | sort_by(.build_num)|  .[0].build_num // empty" $AUGMENTED_JOBSTATUS_PATH`
         if [[ "$DEBUG" != "false" ]];then
             echo "DEBUG: me: $MY_PIPELINE_NUMBER, front: $front_of_queue_pipeline_number"
         fi
@@ -117,14 +119,14 @@ update_active_run_data(){
 
 fetch_filtered_active_builds(){
     JOB_API_SUFFIX="?filter=running&shallow=true"
-    jobs_api_url_template="${CIRCLECI_BASE_URL}/api/v1.1/project/${VCS_TYPE}/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}${JOB_API_SUFFIX}"
+    jobs_api_url_template="${CIRCLECI_BASE_URL}/api/v1.1/project/${VCS_TYPE}/${CIRCLE_PROJECT_USERNAME}/${PROJECT_REPONAME}${JOB_API_SUFFIX}"
     if [ "${FILTER_BRANCH}" == "false" ];then
         echo "Orb parameter 'this-branch-only' is false, will block previous builds on any branch." 
     else
         #branch filter
         : ${CIRCLE_BRANCH:?"Required Env Variable not found!"}
         echo "Only blocking execution if running previous jobs on branch: ${CIRCLE_BRANCH}"
-        jobs_api_url_template="${CIRCLECI_BASE_URL}/api/v1.1/project/${VCS_TYPE}/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/tree/$(urlencode "${CIRCLE_BRANCH}")${JOB_API_SUFFIX}"
+        jobs_api_url_template="${CIRCLECI_BASE_URL}/api/v1.1/project/${VCS_TYPE}/${CIRCLE_PROJECT_USERNAME}/${PROJECT_REPONAME}/tree/$(urlencode "${CIRCLE_BRANCH}")${JOB_API_SUFFIX}"
     fi
 
     if [ ! -z $TESTING_MOCK_RESPONSE ] && [ -f $TESTING_MOCK_RESPONSE ];then
@@ -202,7 +204,7 @@ fetch(){
 cancel_build_num(){
     BUILD_NUM=$1
     echo "Cancelling build ${BUILD_NUM}"
-    cancel_api_url_template="${CIRCLECI_BASE_URL}/api/v1.1/project/${VCS_TYPE}/${CIRCLE_PROJECT_USERNAME}/${CIRCLE_PROJECT_REPONAME}/${BUILD_NUM}/cancel?circle-token=${CCI_TOKEN}"
+    cancel_api_url_template="${CIRCLECI_BASE_URL}/api/v1.1/project/${VCS_TYPE}/${CIRCLE_PROJECT_USERNAME}/${PROJECT_REPONAME}/${BUILD_NUM}/cancel?circle-token=${CCI_TOKEN}"
     curl -s -X POST $cancel_api_url_template > /dev/null
 }
 

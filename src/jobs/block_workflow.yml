@@ -58,6 +58,10 @@ parameters:
   include-debug:
     type: boolean
     default: false
+  project-reponame:
+    type: string
+    default: ""
+    description: "Defaults to the current project's reponame."
 
 
 docker:
@@ -79,3 +83,4 @@ steps:
       my-pipeline: <<parameters.my-pipeline>>
       tag-pattern: <<parameters.tag-pattern>>
       this-branch-only: <<parameters.this-branch-only>>
+      project-reponame: <<parameters.project-reponame>>
